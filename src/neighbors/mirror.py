@@ -79,6 +79,38 @@ def _build_segment_maps() -> tuple[dict[str, Hex], dict[Hex, str]]:
 SEGMENT_TO_HEX, HEX_TO_SEGMENT = _build_segment_maps()
 
 
+def segment_sort_key(segment_id: str) -> tuple[str, int]:
+    """Sort key that orders segment ids by sector letter, then number."""
+    return (segment_id[0], int(segment_id[1:]))
+
+
+def neighbor_by_direction(segment_id: str) -> dict[int, str]:
+    """Map each hex-direction index to the neighbor of ``segment_id`` there.
+
+    The direction indices (0-5) index into
+    :data:`neighbors.hexgrid.HEX_DIRECTIONS`. Only directions that
+    actually have a neighboring segment are included, so this has
+    between 3 and 6 entries. This is the lower-level building block
+    behind both :func:`neighbors` and the edge-sensor model in
+    :mod:`neighbors.sensors`, which needs to know *which* edge each
+    neighbor is on, not just the set of neighbors.
+
+    Raises:
+        ValueError: If ``segment_id`` is not a valid segment identifier.
+    """
+    try:
+        location = SEGMENT_TO_HEX[segment_id]
+    except KeyError:
+        raise ValueError(f"unknown segment id: {segment_id!r}") from None
+
+    result: dict[int, str] = {}
+    for index, direction in enumerate(HEX_DIRECTIONS):
+        neighbor_id = HEX_TO_SEGMENT.get(location + direction)
+        if neighbor_id is not None:
+            result[index] = neighbor_id
+    return result
+
+
 def neighbors(segment_id: str) -> list[str]:
     """Return the identifiers of the segments adjacent to ``segment_id``.
 
@@ -89,15 +121,4 @@ def neighbors(segment_id: str) -> list[str]:
     Raises:
         ValueError: If ``segment_id`` is not a valid segment identifier.
     """
-    try:
-        location = SEGMENT_TO_HEX[segment_id]
-    except KeyError:
-        raise ValueError(f"unknown segment id: {segment_id!r}") from None
-
-    found = (HEX_TO_SEGMENT.get(location + direction) for direction in HEX_DIRECTIONS)
-    result = [neighbor_id for neighbor_id in found if neighbor_id is not None]
-
-    def sort_key(neighbor_id: str) -> tuple[str, int]:
-        return (neighbor_id[0], int(neighbor_id[1:]))
-
-    return sorted(result, key=sort_key)
+    return sorted(neighbor_by_direction(segment_id).values(), key=segment_sort_key)

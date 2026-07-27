@@ -2,9 +2,9 @@ import pytest
 
 from neighbors import (
     SECTORS,
+    SEGMENTS_PER_SECTOR,
     SEGMENT_COUNT,
     SEGMENT_TO_HEX,
-    SEGMENTS_PER_SECTOR,
     neighbors,
 )
 
